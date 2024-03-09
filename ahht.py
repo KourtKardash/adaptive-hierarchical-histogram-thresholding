@@ -86,28 +86,28 @@ def GetMergeSetofBins(H, left, right, w) :
     for i in range (left, right + 1) : 
         bins.append(H[i])
     min_index = FindMinDistance(bins)
-    a = bins[min_index+1][1] - bins[min_index][1]
+    a = bins[min_index + 1][1] - bins[min_index][1]
     while (a <= w) :
         bins_1 = []
         for i in range(min_index) :
             bins_1.append(bins[i])
         bins_1.append((bins[min_index][0] + bins[min_index + 1][0],
                        (bins[min_index][1] + bins[min_index + 1][1]) // 2,
-                       bins[min_index+1][2]))
+                       bins[min_index + 1][2]))
         for i in range (min_index + 2, len(bins)) :
             bins_1.append(bins[i])
         bins = bins_1
         min_index = FindMinDistance(bins)
         if min_index == -1 : break
-        a = bins[min_index+1][1] - bins[min_index][1]
+        a = bins[min_index + 1][1] - bins[min_index][1]
     return bins
 def FindMinDistance(bins) :
     min_index = -1
     if (len(bins) == 1): return min_index
     min_distance = 256
     for i in range(len(bins) - 1) :
-        if bins[i+1][1] - bins[i][1] < min_distance :
-            min_distance = bins[i+1][1] - bins[i][1]
+        if bins[i + 1][1] - bins[i][1] < min_distance :
+            min_distance = bins[i + 1][1] - bins[i][1]
             min_index = i
     return min_index
 def Dist(arr) :
@@ -159,7 +159,7 @@ def DistGrey(arr) :
     c2 = -1
     length = len(arr)
     for i in range (0, length) :
-        for j in range (i+1, length):
+        for j in range (i + 1, length):
             if abs(int(arr[j]) - int(arr[i])) < min_dist:
                 min_dist = abs(int(arr[j]) - int(arr[i]))
                 c1 = i
@@ -181,6 +181,7 @@ general_number = height * width
 Nd = general_number // 1000
 Td = int(args.parameters[1])
 if args.command == 'color':
+    #Creating basic arrays corresponding to the histograms of the 1st level
     H1 = [0] * N
     H2 = [0] * N
     H3 = [0] * N
@@ -189,6 +190,7 @@ if args.command == 'color':
             H1[img[i][j][0]] += 1
             H2[img[i][j][1]] += 1
             H3[img[i][j][2]] += 1
+    #histograms of the 1st level
     H_first_1, H_first_2, H_first_3 = [], [], []
     for i in range(N) :
         H_first_1.append((H1[i], i, i))
@@ -197,12 +199,15 @@ if args.command == 'color':
     span1 = CalcSpan(general_number, H_first_1)
     span2 = CalcSpan(general_number, H_first_2)
     span3 = CalcSpan(general_number, H_first_3)
-    Hists1 = GetAHH(H_first_1, w*span1/N)
-    Hists2 = GetAHH(H_first_2, w*span2/N)
-    Hists3 = GetAHH(H_first_3, w*span3/N)
-    H1 = Hists1[len(Hists1)-1]
-    H2 = Hists2[len(Hists2)-1]
-    H3 = Hists3[len(Hists3)-1]
+    #Creating hierarchical histograms
+    Hists1 = GetAHH(H_first_1, w * span1 / N)
+    Hists2 = GetAHH(H_first_2, w * span2 / N)
+    Hists3 = GetAHH(H_first_3, w * span3 / N)
+    #histograms of the last level
+    H1 = Hists1[len(Hists1) - 1]
+    H2 = Hists2[len(Hists2) - 1]
+    H3 = Hists3[len(Hists3) - 1]
+    #initial segmentation
     for i in range (height) :
         for j in range (width) :
             color1 = img[i][j][0]
@@ -223,6 +228,7 @@ if args.command == 'color':
     res = np.clip(img, 0, 255)
     res = res.astype(np.uint8)
     skimage.io.imsave(args.output_file_initial, res)
+    #find all the colors corresponding to homogeneous areas in the picture.
     arr = []
     for i in range (height) :
         for j in range (width) :
@@ -236,12 +242,12 @@ if args.command == 'color':
                     break
             if flag == True:
                 arr.append(((color1, color2, color3), 1))
-    c = 0
+    #looking for all areas with a number of pixels less than Nd
     small_areas = []
     for i in range(len(arr)) :
         if arr[i][1] < Nd :
             small_areas.append(arr[i])
-            c += arr[i][1]
+    #merging small areas with the nearest ones
     while len(small_areas) != 0 :
         ((color1, color2, color3), number) = small_areas[0]
         small_areas.remove(((color1, color2, color3), number))
@@ -272,6 +278,7 @@ if args.command == 'color':
                         img[i][k][0] = base_elem[0][0]
                         img[i][k][1] = base_elem[0][1]
                         img[i][k][2] = base_elem[0][2]
+    #merge the nearest areas with each other
     while (a := Dist(arr))[0] < Td :
         i1 = a[1]
         i2 = a[2]
@@ -279,19 +286,19 @@ if args.command == 'color':
         (color2, num2) = arr[i2]
         arr.remove((color1, num1))
         arr.remove((color2, num2))
-        arr.append(((num1*color1[0]//(num1+num2)+num2*color2[0]//(num1+num2),
-                    num1*color1[1]//(num1+num2)+num2*color2[1]//(num1+num2),
-                    num1*color1[2]//(num1+num2)+num2*color2[2]//(num1+num2)), num1+num2))
+        arr.append(((num1 * color1[0] // (num1 + num2) + num2 * color2[0] // (num1 + num2),
+                     num1 * color1[1] // (num1 + num2) + num2 * color2[1] // (num1 + num2),
+                     num1 * color1[2] // (num1 + num2) + num2 * color2[2] // (num1 + num2)), num1 + num2))
         for i in range (height) :
             for k in range (width) :
                 if img[i][k][0] == color1[0] and img[i][k][1] == color1[1] and img[i][k][2] == color1[2] :
-                    img[i][k][0] = arr[len(arr)-1][0][0]
-                    img[i][k][1] = arr[len(arr)-1][0][1]
-                    img[i][k][2] = arr[len(arr)-1][0][2]
+                    img[i][k][0] = arr[len(arr) - 1][0][0]
+                    img[i][k][1] = arr[len(arr) - 1][0][1]
+                    img[i][k][2] = arr[len(arr) - 1][0][2]
                 if img[i][k][0] == color2[0] and img[i][k][1] == color2[1] and img[i][k][2] == color2[2] :
-                    img[i][k][0] = arr[len(arr)-1][0][0]
-                    img[i][k][1] = arr[len(arr)-1][0][1]
-                    img[i][k][2] = arr[len(arr)-1][0][2]
+                    img[i][k][0] = arr[len(arr) - 1][0][0]
+                    img[i][k][1] = arr[len(arr) - 1][0][1]
+                    img[i][k][2] = arr[len(arr) - 1][0][2]
     res = np.clip(img, 0, 255)
     res = res.astype(np.uint8)
     skimage.io.imsave(args.output_file_merged, res)
