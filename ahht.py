@@ -271,13 +271,12 @@ if args.command == 'color':
     
         if base_elem[1] < Nd :
             small_areas.append(base_elem)
-        else :
-            for i in range (height) :
-                for k in range (width) :
-                    if img[i][k][0] == color1 and img[i][k][1] == color2 and img[i][k][2] == color3 :
-                        img[i][k][0] = base_elem[0][0]
-                        img[i][k][1] = base_elem[0][1]
-                        img[i][k][2] = base_elem[0][2]
+        for i in range (height) :
+            for k in range (width) :
+                if img[i][k][0] == color1 and img[i][k][1] == color2 and img[i][k][2] == color3 :
+                    img[i][k][0] = base_elem[0][0]
+                    img[i][k][1] = base_elem[0][1]
+                    img[i][k][2] = base_elem[0][2]
     #merge the nearest areas with each other
     while (a := Dist(arr))[0] < Td :
         i1 = a[1]
