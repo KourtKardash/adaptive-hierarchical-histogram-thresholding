@@ -289,7 +289,7 @@ def GetSegmentedImage(img, w, Td) :
     print(len(colors_sequence))
     res = np.clip(img, 0, 255)
     res = res.astype(np.uint8)
-    skimage.io.imsave(args.output_file_merged+"_colors="+str(len(colors_sequence))+".jpg", res)
+    skimage.io.imsave(args.output_file_merged, res)
     return
 
 if __name__ == '__main__':
