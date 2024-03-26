@@ -6,7 +6,6 @@ import skimage.io
 import skimage.transform
 
 N = 256
-
 def GetValleys(H) :
     n = len(H)
     valleys = []
@@ -116,6 +115,7 @@ def Dist(arr) :
     c1 = -1
     c2 = -1
     length = len(arr)
+    
     for (i, point1), (j, point2) in itertools.combinations(enumerate(arr), 2):
         dist = max(abs(int(point2[0][k]) - int(point1[0][k])) for k in range(3))
         if dist != 0 and dist < min_dist:
@@ -192,6 +192,7 @@ def MergeSmallAreas(img, Nd, arr) :
             if dist < min_distance:
                 min_distance = dist
                 arr_index = i
+        
         if any([item == arr[arr_index] for item in small_areas]) :
             small_areas.remove(arr[arr_index])
         count = arr[arr_index][1]
@@ -248,9 +249,9 @@ def GetSegmentedImage(img, w, Td) :
     H1 = Hists1[len(Hists1) - 1]
     H2 = Hists2[len(Hists2) - 1]
     H3 = Hists3[len(Hists3) - 1]
-    print(len(H1))
-    print(len(H2))
-    print(len(H3))
+    #print(len(H1))
+    #print(len(H2))
+    #print(len(H3))
     
     for k in range(len(H1)):
         if k == 0:
@@ -271,9 +272,8 @@ def GetSegmentedImage(img, w, Td) :
             mask = np.logical_and.reduce((img[:,:,2] > H3[k-1][2], img[:,:,2] <= H3[k][2]))
         img[mask, 2] = H3[k][1]
     
-    res = np.clip(img, 0, 255)
-    res = res.astype(np.uint8)
-    skimage.io.imsave(args.output_file_initial, res)
+    res1 = np.clip(img, 0, 255)
+    res1 = res1.astype(np.uint8)
     
     color_values, counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
     a1 = np.empty((len(color_values)), dtype=object)
@@ -287,10 +287,9 @@ def GetSegmentedImage(img, w, Td) :
     img = MergeNearestAreas(img, Td, colors_sequence)
     
     print(len(colors_sequence))
-    res = np.clip(img, 0, 255)
-    res = res.astype(np.uint8)
-    skimage.io.imsave(args.output_file_merged, res)
-    return
+    res2 = np.clip(img, 0, 255)
+    res2 = res2.astype(np.uint8)
+    return (res1, res2)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -304,8 +303,9 @@ if __name__ == '__main__':
 w = int(args.parameters[0])
 Td = int(args.parameters[1])
 img = skimage.io.imread(args.input_file)
-GetSegmentedImage(img, w, Td)
-
+init, merg = GetSegmentedImage(img, w, Td)
+skimage.io.imsave(args.output_file_initial, init)
+skimage.io.imsave(args.output_file_merged, merg)
 '''
 arr = []
 for i in range (height) :
