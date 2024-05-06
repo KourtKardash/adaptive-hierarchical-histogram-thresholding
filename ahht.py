@@ -314,7 +314,6 @@ def GetSegmentedImage(img, w, N1, N2, num_colors) :
     skimage.io.imsave("test.jpg", img)
     
     if len(colors_sequence) < num_colors :
-        print("yes")
         img = np.copy(img1)
         while (a := Dist(c1))[0] < Td and len(c1) > num_colors :
             i1 = a[1]
@@ -332,7 +331,6 @@ def GetSegmentedImage(img, w, N1, N2, num_colors) :
             img[indices] = c1[len(c1) - 1][0]
         print(len(c1))
     elif len(colors_sequence) > num_colors :
-        print("no")
         while len(colors_sequence) > num_colors :
             a = Dist(colors_sequence)
             i1 = a[1]
