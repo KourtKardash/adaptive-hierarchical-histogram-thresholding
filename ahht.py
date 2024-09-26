@@ -1,12 +1,11 @@
 import argparse
 import itertools
 import math
-import cv2
 import numpy as np
 import skimage.io
 import skimage.transform
-import time
-start = time.time()
+
+N = 256
 def GetValleys(H) :
     n = len(H)
     valleys = []
@@ -112,7 +111,7 @@ def FindMinDistance(bins) :
             min_index = i
     return min_index
 def Dist(arr) :
-    min_dist = 256
+    min_dist = N
     c1 = -1
     c2 = -1
     length = len(arr)
@@ -136,12 +135,12 @@ def Dist(arr) :
                 c2 = j
     '''
     return (min_dist, c1, c2)
-def CalcSpan(n, H, N) :
+def CalcSpan(n, H) :
     left = 0
     right = 0
     sum1 = 0
     sum2 = 0
-    for i in range(N-1, -1, -1) :
+    for i in range(255, -1, -1) :
         #if H[i][0] != 0 :
         #    right = i
         sum1 += H[i][0]
@@ -176,7 +175,7 @@ def MergeSmallAreas(img, Nd, arr) :
         ((color1, color2, color3), number) = small_areas[0]
         small_areas.remove(((color1, color2, color3), number))
         arr_index = -1
-        min_distance = 256
+        min_distance = N
         color = (color1, color2, color3)
         '''
         for i in range (len(arr)) :
@@ -222,33 +221,33 @@ def MergeNearestAreas(img, Td, arr) :
         indices = np.where(np.all(img == (color21, color22, color23), axis=-1))
         img[indices] = arr[len(arr) - 1][0]
     return img
-def GetSegmentedImage(img, w, N1, N2, num_colors) :
-    orig = np.copy(img)
+def GetSegmentedImage(img, w, Td) :
     height, width = img.shape[:2]
     pixels_number = height * width
     Nd = pixels_number // 1000
-    
-    H1 = [0] * N1
-    H2 = [0] * N2
-    H3 = [0] * N2
-    for i in range (height) :
-        for j in range (width) :
-            H1[img[i, j, 0]] += 1
-            H2[img[i, j, 1]] += 1
-            H3[img[i, j, 2]] += 1
+
+    red_channel = img[:, :, 0]  # Красный канал
+    green_channel = img[:, :, 1]  # Зелёный канал
+    blue_channel = img[:, :, 2]  # Синий канал
+
+    # Подсчёт количества пикселей каждой интенсивности в каждом канале
+    hist_red = np.histogram(red_channel.flatten(), bins=N, range=[0, N])[0]
+    hist_green = np.histogram(green_channel.flatten(), bins=N, range=[0, N])[0]
+    hist_blue = np.histogram(blue_channel.flatten(), bins=N, range=[0, N])[0]
+
     H_first_1, H_first_2, H_first_3 = [], [], []
-    for i in range(N1) :
-        H_first_1.append((H1[i], i, i))
-    for i in range(N2) :
-        H_first_2.append((H2[i], i, i))
-        H_first_3.append((H3[i], i, i))
-    span1 = CalcSpan(pixels_number, H_first_1, N1)
-    span2 = CalcSpan(pixels_number, H_first_2, N2)
-    span3 = CalcSpan(pixels_number, H_first_3, N2)
+    for i in range(N) :
+        H_first_1.append((hist_red[i], i, i))
+        H_first_2.append((hist_green[i], i, i))
+        H_first_3.append((hist_blue[i], i, i))
+
+    span1 = CalcSpan(pixels_number, H_first_1)
+    span2 = CalcSpan(pixels_number, H_first_2)
+    span3 = CalcSpan(pixels_number, H_first_3)
     
-    Hists1 = GetAHH(H_first_1, w*span1/N1)
-    Hists2 = GetAHH(H_first_2, w*span2/N2)
-    Hists3 = GetAHH(H_first_3, w*span3/N2)
+    Hists1 = GetAHH(H_first_1, w*span1/N)
+    Hists2 = GetAHH(H_first_2, w*span2/N)
+    Hists3 = GetAHH(H_first_3, w*span3/N)
 
     H1 = Hists1[-1]
     H2 = Hists2[-1]
@@ -276,108 +275,37 @@ def GetSegmentedImage(img, w, N1, N2, num_colors) :
             mask = np.logical_and.reduce((img[:,:,2] > H3[k-1][2], img[:,:,2] <= H3[k][2]))
         img[mask, 2] = H3[k][1]
     
-    res1 = np.copy(img)
+    res1 = np.clip(img, 0, 255)
+    res1 = res1.astype(np.uint8)
     
     color_values, counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
     a1 = np.empty((len(color_values)), dtype=object)
     a1[:] = [tuple(i) for i in color_values]
     colors_sequence = list(zip(a1, counts))
-    l1 = len(colors_sequence)
-    print("init number is ", len(colors_sequence))
+    
+    print(len(colors_sequence))
     
     img = MergeSmallAreas(img, Nd, colors_sequence)
     
-    img1 = np.copy(img)
-    c1 = colors_sequence.copy()
-    low = 0
-    high = 256
-    while low <= high:
-        midVal = (low + high) // 2
-        Td = midVal
-        #print(Td, "\n")
-        img = np.copy(img1)
-        colors_sequence = c1.copy()
-        img = MergeNearestAreas(img, midVal, colors_sequence)
-        l2 = len(colors_sequence)
-        if l2 == num_colors:
-            Td = midVal
-            break
-        if l2 > num_colors:
-            low = midVal + 1
-        else:
-            high = midVal - 1
-
-    #img = MergeNearestAreas(img, Td, colors_sequence)
-    #l2 = len(colors_sequence)
-    print("final number is ", len(colors_sequence))
-    print("td is ", Td)
-    skimage.io.imsave("test.jpg", img)
+    img = MergeNearestAreas(img, Td, colors_sequence)
     
-    if len(colors_sequence) < num_colors :
-        img = np.copy(img1)
-        while (a := Dist(c1))[0] < Td and len(c1) > num_colors :
-            i1 = a[1]
-            i2 = a[2]
-            ((color11, color12, color13), num1) = c1[i1]
-            ((color21, color22, color23), num2) = c1[i2]
-            c1.remove(((color11, color12, color13), num1))
-            c1.remove(((color21, color22, color23), num2))
-            c1.append(((num1 * color11 // (num1 + num2) + num2 * color21 // (num1 + num2),
-                        num1 * color12 // (num1 + num2) + num2 * color22 // (num1 + num2),
-                        num1 * color13 // (num1 + num2) + num2 * color23 // (num1 + num2)), num1 + num2))
-            indices = np.where(np.all(img == (color11, color12, color13), axis=-1))
-            img[indices] = c1[len(c1) - 1][0]
-            indices = np.where(np.all(img == (color21, color22, color23), axis=-1))
-            img[indices] = c1[len(c1) - 1][0]
-        print(len(c1))
-    elif len(colors_sequence) > num_colors :
-        while len(colors_sequence) > num_colors :
-            a = Dist(colors_sequence)
-            i1 = a[1]
-            i2 = a[2]
-            ((color11, color12, color13), num1) = colors_sequence[i1]
-            ((color21, color22, color23), num2) = colors_sequence[i2]
-            colors_sequence.remove(((color11, color12, color13), num1))
-            colors_sequence.remove(((color21, color22, color23), num2))
-            colors_sequence.append(((num1 * color11 // (num1 + num2) + num2 * color21 // (num1 + num2),
-                        num1 * color12 // (num1 + num2) + num2 * color22 // (num1 + num2),
-                        num1 * color13 // (num1 + num2) + num2 * color23 // (num1 + num2)), num1 + num2))
-            indices = np.where(np.all(img == (color11, color12, color13), axis=-1))
-            img[indices] = colors_sequence[len(colors_sequence) - 1][0]
-            indices = np.where(np.all(img == (color21, color22, color23), axis=-1))
-            img[indices] = colors_sequence[len(colors_sequence) - 1][0]
-        print(len(colors_sequence))
-    res2 = np.copy(img)
-    return (res1, res2, l1, l2)
+    print(len(colors_sequence))
+    res2 = np.clip(img, 0, 255)
+    res2 = res2.astype(np.uint8)
+    return (res1, res2)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('command')
-    parser.add_argument('parameters', nargs='*') #num_colors
+    parser.add_argument('parameters', nargs='*') #w, Td
     parser.add_argument('input_file')
     parser.add_argument('output_file_initial')
     parser.add_argument('output_file_merged',)
     args = parser.parse_args()
 
-if args.command == 'rgb' :
-    N1 = 256
-    N2 = 256
-    w = 5
-    num_colors = int(args.parameters[0])
-    img = cv2.imread(args.input_file)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    init, merg, l1, l2 = GetSegmentedImage(img, w, N1, N2, num_colors)
-    skimage.io.imsave(args.output_file_initial, cv2.cvtColor(init, cv2.COLOR_HSV2RGB))
-    skimage.io.imsave(args.output_file_merged, cv2.cvtColor(merg,cv2.COLOR_HSV2RGB))    
-if args.command == 'hsv' :
-    N1 = 180
-    N2 = 256
-    w = 5
-    num_colors = int(args.parameters[0])
-    img = cv2.imread(args.input_file)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    init, merg, l1, l2 = GetSegmentedImage(img, w, N1, N2, num_colors)
-    skimage.io.imsave(args.output_file_initial, cv2.cvtColor(init, cv2.COLOR_HSV2RGB))
-    skimage.io.imsave(args.output_file_merged,cv2.cvtColor(merg,cv2.COLOR_HSV2RGB))    
-print(time.time()-start)
 
+w = int(args.parameters[0])
+Td = int(args.parameters[1])
+img = skimage.io.imread(args.input_file)
+init, merg = GetSegmentedImage(img, w, Td)
+skimage.io.imsave(args.output_file_initial, init)
+skimage.io.imsave(args.output_file_merged, merg)
